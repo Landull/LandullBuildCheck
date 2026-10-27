@@ -1,0 +1,9 @@
+.venv/
+build/
+dist/
+lhm/
+__pycache__/
+*.spec
+*.log
+selftest.json
+.transfer.b64
