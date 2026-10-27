@@ -63,18 +63,37 @@ def fetch(pkg, version, depth=0):
     seen[key] = version
     data = get(f"{FEED}/{key}/{version.lower()}/{key}.{version.lower()}.nupkg")
     z = zipfile.ZipFile(io.BytesIO(data))
-    names = [n.replace("\\", "/") for n in z.namelist()]
-    lib_dirs = sorted({n.split("/")[1] for n in names if n.lower().startswith("lib/") and n.count("/") >= 2})
-    chosen = next((fw for fw in LIB_PREF if fw in [d.lower() for d in lib_dirs]), None)
+    # DLLs grouped by the folder they sit in. Usually lib/<framework>/, but some packages use
+    # runtimes/win[-x64]/lib/<framework>/ or other layouts, so look everywhere.
+    folders = {}
+    for orig in z.namelist():
+        n = orig.replace("\\", "/")
+        if n.lower().endswith(".dll") and "/" in n:
+            folders.setdefault(n.rsplit("/", 1)[0], []).append(orig)
+
+    def rank(folder):
+        parts = folder.lower().split("/")
+        fw = parts[-1]
+        if fw not in LIB_PREF:
+            return None
+        if "runtimes" in parts and not any(p in ("win", "win-x64") for p in parts):
+            return None                                  # linux/osx builds
+        if "ref" in parts:
+            return None                                  # reference assemblies, not loadable
+        return (LIB_PREF.index(fw), 0 if "win-x64" in parts else 1 if "win" in parts else 2)
+
+    ranked = sorted((r, f) for f in folders if (r := rank(f)) is not None)
+    chosen = ranked[0][1] if ranked else None
     copied = []
     if chosen:
-        for orig, n in zip(z.namelist(), names):
-            parts = n.split("/")
-            if len(parts) == 3 and parts[0].lower() == "lib" and parts[1].lower() == chosen and n.lower().endswith(".dll"):
-                with z.open(orig) as src, open(os.path.join(DEST, parts[2]), "wb") as dst:
-                    shutil.copyfileobj(src, dst)
-                copied.append(parts[2])
-    print(f"{'  ' * depth}{pkg} {version}  [{chosen or 'no lib: ' + ','.join(lib_dirs)}] {' '.join(copied)}")
+        for orig in folders[chosen]:
+            name = orig.replace("\\", "/").rsplit("/", 1)[1]
+            with z.open(orig) as src, open(os.path.join(DEST, name), "wb") as dst:
+                shutil.copyfileobj(src, dst)
+            copied.append(name)
+    print(f"{'  ' * depth}{pkg} {version}  [{chosen or 'no .NET Framework build'}] {' '.join(copied)}")
+    if depth == 0 and not chosen:
+        print("  package contents:\n    " + "\n    ".join(z.namelist()))
 
     nuspec = next((o for o in z.namelist() if o.lower().endswith(".nuspec")), None)
     if not nuspec:
