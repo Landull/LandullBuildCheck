@@ -117,6 +117,19 @@ class LHMBackend:
         except Exception:                            # noqa: BLE001 - already loaded
             pass
         import clr                                  # noqa: F401
+        from System import AppDomain, ResolveEventHandler
+        from System.Reflection import Assembly, AssemblyName
+
+        def resolve(sender, args):
+            """Load any dependency from ./lhm whatever version is asked for (stands in for app.config
+            binding redirects, which a Python host doesn't have)."""
+            try:
+                path = os.path.join(folder, AssemblyName(args.Name).Name + ".dll")
+                return Assembly.LoadFrom(path) if os.path.isfile(path) else None
+            except Exception:                        # noqa: BLE001
+                return None
+        self._resolver = ResolveEventHandler(resolve)
+        AppDomain.CurrentDomain.AssemblyResolve += self._resolver
         clr.AddReference(os.path.join(folder, "LibreHardwareMonitorLib.dll"))
         from LibreHardwareMonitor.Hardware import Computer   # noqa: E402
         c = Computer()
@@ -323,8 +336,12 @@ class DemoBackend:
         pass
 
 
+LOAD_ERROR = ""
+
+
 def open_backend():
     """Best backend available. Returns (backend, note)."""
+    global LOAD_ERROR
     if DEMO:
         b = DemoBackend()
         return b, b.note
@@ -333,6 +350,10 @@ def open_backend():
             b = LHMBackend()
             return b, b.note
         except Exception as e:                       # noqa: BLE001
-            log(f"LibreHardwareMonitor failed to load: {e!r}")
+            import traceback
+            LOAD_ERROR = traceback.format_exc()
+            log(f"LibreHardwareMonitor failed to load: {LOAD_ERROR}")
+    elif IS_WIN:
+        LOAD_ERROR = f"LibreHardwareMonitorLib.dll not found in {lhm_dir()}"
     b = BasicBackend()
     return b, b.note

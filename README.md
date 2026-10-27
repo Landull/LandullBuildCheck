@@ -43,7 +43,7 @@ You need Windows and Python 3.10–3.13.
 1. Double-click `build_windows.bat`.
 2. The app is built to `dist\LandullBuildCheck.exe`.
 
-The build script downloads the LibreHardwareMonitor sensor library from NuGet into `lhm\` (see `fetch_lhm.ps1`). Pushing a tag such as `v1.0.0` makes GitHub Actions build the exe, test that the sensors load, and publish a release.
+The build script downloads the LibreHardwareMonitor sensor library from NuGet into `lhm\` (see `fetch_lhm.py`). Pushing a tag such as `v1.0.0` makes GitHub Actions build the exe, test that the sensors load, and publish a release.
 
 **Run from source:** `pip install -r requirements.txt`, then `python buildcheck.py` (as administrator for full sensors).
 

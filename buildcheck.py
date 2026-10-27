@@ -2100,6 +2100,7 @@ def selftest(args):
     out = {"app": f"{APP_NAME} {VERSION}", "admin": is_admin()}
     b, note = bc_sensors.open_backend()
     out["sensor_backend"], out["sensor_note"] = b.name, note
+    out["sensor_load_error"] = bc_sensors.LOAD_ERROR
     try:
         b.read()
         time.sleep(1)
@@ -2117,6 +2118,8 @@ def selftest(args):
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(out, fh, indent=2, default=str)
     print(f"sensor backend: {out['sensor_backend']}  groups: {len(out.get('sensor_groups', []))}  -> {path}")
+    if out["sensor_load_error"]:
+        print("sensor library error:\n" + out["sensor_load_error"])
     return 0
 
 

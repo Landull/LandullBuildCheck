@@ -17,7 +17,7 @@ if not exist .venv\Scripts\python.exe (
 
 if not exist lhm\LibreHardwareMonitorLib.dll (
   echo Downloading the LibreHardwareMonitor sensor library...
-  powershell -NoProfile -ExecutionPolicy Bypass -File fetch_lhm.ps1
+  .venv\Scripts\python fetch_lhm.py
 )
 set LHM=
 if exist lhm\LibreHardwareMonitorLib.dll (
